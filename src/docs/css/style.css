@@ -30,9 +30,15 @@ nav a:hover {
 }
 
 .container {
-  max-width: 900px;
   margin: 2rem auto;
   padding: 1rem;
+}
+
+.layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .module-card {

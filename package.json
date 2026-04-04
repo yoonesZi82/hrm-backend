@@ -33,6 +33,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "express-useragent": "^2.1.0",
+    "http-server": "^14.1.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.19.3",
