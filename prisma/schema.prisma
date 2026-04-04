@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ==================
+// ENUMS
+// ==================
+
+enum Role {
+  SUPER_ADMIN
+  HR_MANAGER
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  PENDING_ACTIVATION
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ==================
+// USER & AUTH
+// ==================
+
+model User {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  mobile        String     @unique
+  isMobileVerified Boolean   @default(false)
+  email         String?    @unique
+  isEmailVerified Boolean    @default(false)
+  password      String
+  role          Role       @default(EMPLOYEE)
+  status        UserStatus @default(PENDING_ACTIVATION)
+  refreshTokens RefreshToken[]
+  activityLogs  ActivityLog[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("users")
+}
+
+
+model RefreshToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  token      String   @unique
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  ip         String?
+  userAgent  String?
+  device     String?
+  expiresAt  DateTime
+  isRevoked  Boolean  @default(false)
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+
+model ActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  ip        String?
+  device    String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+
