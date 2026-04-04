@@ -1,40 +1,49 @@
 <!doctype html>
-<html lang="en">
+<html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <title>Auth Module</title>
-    <link rel="stylesheet" href="../css/style.css" />
+    <title>Auth احراز هویت</title>
+    <link rel="stylesheet" href="../../css/style.css" />
   </head>
   <body>
-    <header>
-      <h1>Auth Module</h1>
-    </header>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-group">
+          <a class="brand" href="../../index.html">HRM Docs</a>
+          <span class="brand-subtitle">مدرک ماژول‌های HRM</span>
+        </div>
+        <nav class="topnav">
+          <a href="../../index.html">خانه</a>
+          <a href="auth.html">Auth</a>
+          <a href="users.html">Users</a>
+          <a href="departments.html">Departments</a>
+          <a href="employees.html">Employees</a>
+          <a href="files.html">Files</a>
+          <a href="leaves.html">Leaves</a>
+          <a href="payroll.html">Payroll</a>
+          <a href="performance.html">Performance</a>
+          <a href="recruitment.html">Recruitment</a>
+        </nav>
+      </header>
 
-    <div class="container">
-      <div class="module-card">
-        <h2>Purpose</h2>
-        <p>
-          Handles authentication and authorization, login, register, refresh
-          tokens, etc.
-        </p>
-      </div>
+      <main class="content">
+        <section class="hero-card">
+          <div class="hero-icon">🔐</div>
+          <div>
+            <h1>Auth (احراز هویت)</h1>
+            <p>این ماژول مسئول مدیریت ورود کاربران و امنیت سیستم است.</p>
+          </div>
+        </section>
 
-      <div class="module-card">
-        <h2>Routes</h2>
-        <pre><code>POST /auth/register
-POST /auth/login
-POST /auth/refresh
-POST /auth/logout
-GET /auth/me</code></pre>
-      </div>
+        <section class="cards-grid">
+          <div class="module-card"><h2>وظایف</h2><ul><li>ثبت‌نام (Register)</li><li>ورود (Login)</li><li>تولید Access Token</li><li>تولید Refresh Token</li><li>مدیریت Logout</li><li>مدیریت نقش‌ها (Role-based access)</li></ul></div>
+          <div class="module-card"><h2>نکات</h2><ul><li>از JWT استفاده می‌شود</li><li>Refresh Token در Cookie ذخیره می‌شود</li><li>Access Token در Header ارسال می‌شود</li></ul></div>
+        </section>
+      </main>
 
-      <div class="module-card">
-        <h2>Notes</h2>
-        <p>
-          Refresh token is stored in HTTP-only cookie, access token is returned
-          in response body.
-        </p>
-      </div>
+      <footer class="footer">
+        <p>مستندات ماژول‌های HRM | ساخته شده برای تیم شما</p>
+      </footer>
     </div>
   </body>
 </html>
