@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Auth Module</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Auth Module</h1>
+    </header>
+
+    <div class="container">
+      <div class="module-card">
+        <h2>Purpose</h2>
+        <p>
+          Handles authentication and authorization, login, register, refresh
+          tokens, etc.
+        </p>
+      </div>
+
+      <div class="module-card">
+        <h2>Routes</h2>
+        <pre><code>POST /auth/register
+POST /auth/login
+POST /auth/refresh
+POST /auth/logout
+GET /auth/me</code></pre>
+      </div>
+
+      <div class="module-card">
+        <h2>Notes</h2>
+        <p>
+          Refresh token is stored in HTTP-only cookie, access token is returned
+          in response body.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
