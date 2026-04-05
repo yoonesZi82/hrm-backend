@@ -9,9 +9,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({})],
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: Number(process.env.JWT_EXPIRES_IN) },
+    }),
+  ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, AuthUtilsService],
-  exports: [AuthService, AuthUtilsService],
+  exports: [AuthService, AuthUtilsService, JwtModule],
 })
 export class AuthModule {}
