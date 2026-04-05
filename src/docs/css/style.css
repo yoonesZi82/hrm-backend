@@ -1,6 +1,11 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: radial-gradient(circle at top, #2a5c9f 0%, #1f3d6e 35%, #162a46 100%);
+  background: radial-gradient(
+    circle at top,
+    #2a5c9f 0%,
+    #1f3d6e 35%,
+    #162a46 100%
+  );
   color: #f5f7fb;
   margin: 0;
   padding: 0;
@@ -27,7 +32,7 @@ a {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   margin-bottom: 1.5rem;
 }
 
@@ -64,13 +69,15 @@ a {
   color: #e8efff;
   padding: 0.55rem 0.9rem;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  transition: transform 0.2s ease, background 0.2s ease;
+  background: rgba(255, 255, 255, 0.08);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .topnav a:hover {
   transform: translateY(-1px);
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .content {
@@ -84,12 +91,14 @@ a {
   gap: 1.4rem;
   padding: 2rem;
   border-radius: 24px;
-  background: rgba(255,255,255,0.08);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 24px 60px rgba(0,0,0,0.15);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.15);
 }
 
 .hero-home {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .hero-icon {
@@ -99,7 +108,11 @@ a {
   place-items: center;
   border-radius: 24px;
   font-size: 2.4rem;
-  background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.08)
+  );
 }
 
 .hero-card h1 {
@@ -121,18 +134,21 @@ a {
 }
 
 .module-card {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 22px;
   padding: 1.5rem;
-  box-shadow: 0 18px 45px rgba(0,0,0,0.18);
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .module-card:hover {
   transform: translateY(-4px);
-  background: rgba(255,255,255,0.15);
-  border-color: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .module-card h2 {
@@ -164,7 +180,102 @@ a {
 .footer {
   text-align: center;
   margin: 2rem 0 1rem;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.api-section {
+  padding: 1.75rem;
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.api-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  color: #f4f8ff;
+}
+
+.api-base-hint {
+  margin: 0 0 1.25rem;
+  line-height: 1.75;
+  color: #c5d4f5;
+  font-size: 0.95rem;
+}
+
+.api-base-hint code {
+  direction: ltr;
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.88rem;
+}
+
+.api-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.api-box {
+  margin: 0;
+  padding: 1.1rem 1.2rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+}
+
+.api-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.55rem;
+}
+
+.api-method {
+  direction: ltr;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+  color: #0f172a;
+}
+
+.api-method-get {
+  background: #7dd3fc;
+}
+
+.api-method-post {
+  background: #86efac;
+}
+
+.api-method-patch {
+  background: #fcd34d;
+}
+
+.api-method-delete {
+  background: #fca5a5;
+}
+
+.api-path {
+  direction: ltr;
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+  font-size: 0.88rem;
+  color: #e8f0ff;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+
+.api-desc {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: #d0dbf5;
 }
 
 @media (max-width: 780px) {

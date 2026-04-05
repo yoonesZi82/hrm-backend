@@ -7,15 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================
-// ENUMS
-// ==================
-
+// ? ENUMS
 enum Role {
   SUPER_ADMIN
   HR_MANAGER
   MANAGER
   EMPLOYEE
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 enum UserStatus {
@@ -25,50 +35,61 @@ enum UserStatus {
   SUSPENDED
 }
 
-// ==================
-// USER & AUTH
-// ==================
+enum OrgRole {
+  OWNER
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+// ? USER & AUTH
 
 model User {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
-  mobile        String     @unique
-  isMobileVerified Boolean   @default(false)
-  email         String?    @unique
-  isEmailVerified Boolean    @default(false)
-  password      String
-  role          Role       @default(EMPLOYEE)
-  status        UserStatus @default(PENDING_ACTIVATION)
-  refreshTokens RefreshToken[]
-  activityLogs  ActivityLog[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id               String     @id @default(auto()) @map("_id") @db.ObjectId
+  mobile           String     @unique
+  isMobileVerified Boolean    @default(false)
+  email            String     @unique
+  isEmailVerified  Boolean    @default(false)
+  password         String
+  role             Role       @default(EMPLOYEE)
+  status           UserStatus @default(PENDING_ACTIVATION)
+
+  refreshTokens           RefreshToken[]
+  activityLogs            ActivityLog[]
+  organizationInvitations Invitation[]
+  organizationMembers     OrganizationMember[]
+  ownedOrganizations      Organization[]       @relation("OrganizationOwner")
+  notifications           Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
-
 model RefreshToken {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  token      String   @unique
-  userId     String   @db.ObjectId
-  user       User     @relation(fields: [userId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  token  String @unique
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   ip         String?
   userAgent  String?
   device     String?
   expiresAt  DateTime
-  isRevoked  Boolean  @default(false)
+  isRevoked  Boolean   @default(false)
   lastUsedAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
   @@map("refresh_tokens")
 }
 
-
 model ActivityLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String?  @db.ObjectId
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   ip        String?
   device    String?
@@ -79,4 +100,121 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+// ? Notification
 
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ? ORGANIZATION CORE
+
+model Organization {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  slug    String @unique
+  ownerId String @db.ObjectId
+  owner   User   @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  logo         String?
+  domain       String?
+  primaryColor String?
+
+  members      OrganizationMember[]
+  invitations  Invitation[]
+  branches     Branch[]
+  settings     OrganizationSettings?
+  subscription Subscription?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String @db.ObjectId
+  organizationId String @db.ObjectId
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  role OrgRole @default(EMPLOYEE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("organization_members")
+}
+
+model Invitation {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  email          String
+  userId         String?          @db.ObjectId
+  organizationId String           @db.ObjectId
+  role           OrgRole
+  token          String           @unique
+  expiresAt      DateTime
+  status         InvitationStatus @default(PENDING)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, userId])
+  @@map("invitations")
+}
+
+model Branch {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  location String?
+
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("branches")
+}
+
+model OrganizationSettings {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String @unique @db.ObjectId
+
+  timezone String @default("UTC")
+  currency String @default("USD")
+  language String @default("en")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organization_settings")
+}
+
+model Subscription {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String @unique @db.ObjectId
+
+  plan      Plan      @default(FREE)
+  maxUsers  Int       @default(5)
+  expiresAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

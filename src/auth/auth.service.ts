@@ -55,7 +55,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         mobile: dto.mobile,
-        ...(dto.email && { email: dto.email }),
+        email: dto.email ?? '',
         password: hashedPassword,
         role: dto.role ?? 'EMPLOYEE',
         isMobileVerified: false,
