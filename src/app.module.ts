@@ -16,6 +16,8 @@ import { RecruitmentModule } from './recruitment/recruitment.module';
 import { PerformanceModule } from './performance/performance.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { FilesModule } from './files/files.module';
+import { OrganizationMembersModule } from './organization-members/organization-members.module';
+import { PermissionModule } from './permission/permission.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { FilesModule } from './files/files.module';
     PerformanceModule,
     NotificationsModule,
     FilesModule,
+    OrganizationMembersModule,
+    PermissionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

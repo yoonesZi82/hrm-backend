@@ -1,0 +1,14 @@
+export enum AppPermission {
+  ADD_MEMBER = 'ADD_MEMBER',
+  REMOVE_MEMBER = 'REMOVE_MEMBER',
+  UPDATE_MEMBER_ROLE = 'UPDATE_MEMBER_ROLE',
+  VIEW_MEMBERS = 'VIEW_MEMBERS',
+}
+
+export enum OrgRole {
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  HR = 'HR',
+  EMPLOYEE = 'EMPLOYEE',
+}

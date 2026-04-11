@@ -61,11 +61,50 @@ model User {
   organizationMembers     OrganizationMember[]
   ownedOrganizations      Organization[]       @relation("OrganizationOwner")
   notifications           Notification[]
+  UserPermission          UserPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Permission {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("permission")
+}
+
+model RolePermission {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  role         OrgRole
+  permissionId String  @db.ObjectId
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([role, permissionId])
+  @@map("role_permission")
+}
+
+model UserPermission {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String @db.ObjectId
+  permissionId String @db.ObjectId
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  User       User       @relation(fields: [userId], references: [id])
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("user_permission")
 }
 
 model RefreshToken {
@@ -81,6 +120,7 @@ model RefreshToken {
   isRevoked  Boolean   @default(false)
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([userId])
   @@map("refresh_tokens")
@@ -96,6 +136,7 @@ model ActivityLog {
   userAgent String?
   metadata  Json?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("activity_logs")
 }
@@ -110,6 +151,9 @@ model Notification {
   body      String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
 }
 
 // ? ORGANIZATION CORE
