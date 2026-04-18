@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './user-permission/users.module';
 import { EmployeesModule } from './employees/employees.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DepartmentsModule } from './departments/departments.module';
@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { FilesModule } from './files/files.module';
 import { OrganizationMembersModule } from './organization-members/organization-members.module';
 import { PermissionModule } from './permission/permission.module';
+import { InvitationModule } from './invitation/invitation.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PermissionModule } from './permission/permission.module';
     FilesModule,
     OrganizationMembersModule,
     PermissionModule,
+    InvitationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

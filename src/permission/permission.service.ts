@@ -107,4 +107,94 @@ export class PermissionsService {
     );
     return rolePermissions;
   }
+
+  // ! GET ALL PERMISSIONS
+  async getAllPermissions(userId: string, req?: Request) {
+    const permissions = await this.prisma.permission.findMany();
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.GET_PERMISSIONS_SUCCESS,
+      userId,
+      req,
+      { reason: 'All permissions fetched successfully' },
+    );
+
+    return permissions;
+  }
+
+  // ! REMOVE PERMISSION FROM ROLE
+  async removePermissionFromRole(
+    role: string,
+    permissionId: string,
+    userId: string,
+    req?: Request,
+  ) {
+    const existing = await this.prisma.rolePermission.findFirst({
+      where: {
+        role: role as any,
+        permissionId,
+      },
+    });
+
+    if (!existing) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REMOVE_PERMISSION_FROM_ROLE_FAILED,
+        userId,
+        req,
+        { role, permissionId, reason: 'Relation not found' },
+      );
+      throw new NotFoundException('RolePermission not found');
+    }
+
+    await this.prisma.rolePermission.delete({
+      where: { id: existing.id },
+    });
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.REMOVE_PERMISSION_FROM_ROLE_SUCCESS,
+      userId,
+      req,
+      { role, permissionId },
+    );
+
+    return { message: 'Permission removed from role' };
+  }
+
+  // ! DELETE PERMISSION (OPTIONAL BUT IMPORTANT)
+  async deletePermission(permissionId: string, userId: string, req?: Request) {
+    const permission = await this.prisma.permission.findUnique({
+      where: { id: permissionId },
+    });
+
+    if (!permission) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.DELETE_PERMISSION_FAILED,
+        userId,
+        req,
+        { permissionId, reason: 'Permission not found' },
+      );
+      throw new NotFoundException('Permission not found');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.rolePermission.deleteMany({
+        where: { permissionId },
+      }),
+      this.prisma.userPermission.deleteMany({
+        where: { permissionId },
+      }),
+      this.prisma.permission.delete({
+        where: { id: permissionId },
+      }),
+    ]);
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.DELETE_PERMISSION_SUCCESS,
+      userId,
+      req,
+      { permissionId },
+    );
+
+    return { message: 'Permission deleted successfully' };
+  }
 }

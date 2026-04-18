@@ -6,6 +6,7 @@ import {
   Param,
   Req,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { PermissionsService } from './permission.service';
@@ -74,5 +75,41 @@ export class PermissionsController {
     @Req() req?: Request,
   ) {
     return this.service.getRolePermissions(role, userId, req);
+  }
+
+  // ! GET /permissions
+  @Get()
+  @ApiOperation({ summary: 'Get all permissions' })
+  getAllPermissions(@CurrentUser('id') userId: string, @Req() req?: Request) {
+    return this.service.getAllPermissions(userId, req);
+  }
+
+  // ! DELETE /permissions/roles/:role/permissions/:permissionId
+  @Delete('roles/:role/permissions/:permissionId')
+  @ApiOperation({ summary: 'Remove permission from role' })
+  @ApiParam({ name: 'role', enum: OrgRole })
+  removePermissionFromRole(
+    @Param('role') role: OrgRole,
+    @Param('permissionId') permissionId: string,
+    @CurrentUser('id') userId: string,
+    @Req() req?: Request,
+  ) {
+    return this.service.removePermissionFromRole(
+      role,
+      permissionId,
+      userId,
+      req,
+    );
+  }
+
+  // ! DELETE /permissions/:permissionId
+  @Delete(':permissionId')
+  @ApiOperation({ summary: 'Delete permission' })
+  deletePermission(
+    @Param('permissionId') permissionId: string,
+    @CurrentUser('id') userId: string,
+    @Req() req?: Request,
+  ) {
+    return this.service.deletePermission(permissionId, userId, req);
   }
 }
