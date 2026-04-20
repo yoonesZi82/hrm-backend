@@ -1,6 +1,6 @@
 import { IsEmail, IsEnum } from 'class-validator';
-import { OrgRole } from '@/common/enums/permission.enum';
 import { ApiProperty } from '@nestjs/swagger';
+import { OrgRole } from '@/common/enums/org-role.enum';
 
 export class CreateInvitationDto {
   @ApiProperty({

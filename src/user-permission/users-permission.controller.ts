@@ -6,10 +6,8 @@ import {
   Param,
   Body,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
-import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { AssignUserPermissionDto } from './dto/assign-user-permission.dto';
 import {
   ApiTags,
@@ -19,7 +17,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { UserPermissionsService } from './users.service';
+import { UserPermissionsService } from './users-permission.service';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
 @ApiTags('User Permissions')
@@ -38,26 +36,15 @@ export class UserPermissionsController {
   assignPermission(
     @Param('userId') userId: string,
     @Body() dto: AssignUserPermissionDto,
-    @CurrentUser('id') currentUserId: string,
-    @Req() req?: Request,
   ) {
-    return this.service.assignPermission(
-      userId,
-      dto.permissionId,
-      currentUserId,
-      req,
-    );
+    return this.service.assignPermission(userId, dto.permissionId);
   }
 
   // ! GET /users/:userId/permissions
   @Get()
   @ApiOperation({ summary: 'Get user permissions' })
-  getUserPermissions(
-    @Param('userId') userId: string,
-    @CurrentUser('id') currentUserId: string,
-    @Req() req?: Request,
-  ) {
-    return this.service.getUserPermissions(userId, currentUserId, req);
+  getUserPermissions(@Param('userId') userId: string) {
+    return this.service.getUserPermissions(userId);
   }
 
   // ! DELETE /users/:userId/permissions/:permissionId
@@ -66,14 +53,7 @@ export class UserPermissionsController {
   removeUserPermission(
     @Param('userId') userId: string,
     @Param('permissionId') permissionId: string,
-    @CurrentUser('id') currentUserId: string,
-    @Req() req?: Request,
   ) {
-    return this.service.removeUserPermission(
-      userId,
-      permissionId,
-      currentUserId,
-      req,
-    );
+    return this.service.removeUserPermission(userId, permissionId);
   }
 }

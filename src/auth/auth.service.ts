@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -12,6 +13,7 @@ import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 
 // ? Import enum
 import { ActivityAction } from 'src/common/enums/activity-action.enum';
+import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +23,8 @@ export class AuthService {
   ) {}
 
   // ! REGISTER
-  async register(dto: RegisterDto, req?: Request) {
+  // @ActivityLog(ActivityAction.REGISTER_SUCCESS, ActivityAction.REGISTER_FAILED)
+  async register(dto: RegisterDto) {
     const mobileExists = await this.prisma.user.findUnique({
       where: { mobile: dto.mobile },
     });
@@ -31,22 +34,10 @@ export class AuthService {
       : null;
 
     if (mobileExists) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.REGISTER_FAILED,
-        undefined,
-        req,
-        { mobile: dto.mobile, reason: 'Mobile already registered' },
-      );
       throw new ConflictException('Mobile number already registered');
     }
 
     if (emailExists) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.REGISTER_FAILED,
-        undefined,
-        req,
-        { email: dto.email, reason: 'Email already registered' },
-      );
       throw new ConflictException('Email is already registered');
     }
 
@@ -71,17 +62,11 @@ export class AuthService {
       },
     });
 
-    await this.authUtils.createActivityLog(
-      ActivityAction.REGISTER_SUCCESS,
-      user.id,
-      req,
-      { mobile: user.mobile },
-    );
-
     return user;
   }
 
   // ! LOGIN
+  // @ActivityLog(ActivityAction.LOGIN_SUCCESS, ActivityAction.LOGIN_FAILED)
   async login(dto: LoginDto, req?: Request) {
     const user = await this.prisma.user.findUnique({
       where: { mobile: dto.mobile },
@@ -89,13 +74,6 @@ export class AuthService {
 
     // ? user not found
     if (!user) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.LOGIN_FAILED,
-        undefined,
-        req,
-        { mobile: dto.mobile, reason: 'User not found' },
-      );
-
       throw new UnauthorizedException('Invalid mobile or password');
     }
 
@@ -103,13 +81,6 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.LOGIN_FAILED,
-        user.id,
-        req,
-        { mobile: dto.mobile, reason: 'Invalid password' },
-      );
-
       throw new UnauthorizedException('Invalid mobile or password');
     }
 
@@ -125,17 +96,6 @@ export class AuthService {
     });
 
     if (activeSessions >= 2) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.LOGIN_FAILED,
-        user.id,
-        req,
-        {
-          mobile: dto.mobile,
-          reason: 'Maximum number of logged-in devices reached',
-          activeSessions,
-        },
-      );
-
       throw new UnauthorizedException(
         'Maximum number of logged-in devices reached',
       );
@@ -164,17 +124,6 @@ export class AuthService {
     );
 
     // ? log success
-    await this.authUtils.createActivityLog(
-      ActivityAction.LOGIN_SUCCESS,
-      user.id,
-      req,
-      {
-        mobile: dto.mobile,
-        sessionsCount: activeSessions + 1,
-        device: deviceInfo,
-      },
-    );
-
     return {
       user: {
         id: user.id,
@@ -188,6 +137,10 @@ export class AuthService {
   }
 
   // ! REFRESH TOKEN
+  @ActivityLog(
+    ActivityAction.TOKEN_REFRESH_SUCCESS,
+    ActivityAction.TOKEN_REFRESH_FAILED,
+  )
   async refreshToken(token: string, req?: Request) {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token },
@@ -195,32 +148,14 @@ export class AuthService {
     });
 
     if (!stored) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.TOKEN_REFRESH_FAILED,
-        undefined,
-        req,
-        { reason: 'Token not found', token: token.substring(0, 10) + '...' },
-      );
       throw new UnauthorizedException('Invalid token');
     }
 
     if (stored.isRevoked) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.TOKEN_REFRESH_FAILED,
-        stored.userId,
-        req,
-        { reason: 'Token revoked', token: token.substring(0, 10) + '...' },
-      );
       throw new UnauthorizedException('Token revoked');
     }
 
     if (stored.expiresAt < new Date()) {
-      await this.authUtils.createActivityLog(
-        ActivityAction.TOKEN_REFRESH_FAILED,
-        stored.userId,
-        req,
-        { reason: 'Token expired', token: token.substring(0, 10) + '...' },
-      );
       throw new UnauthorizedException('Token expired');
     }
 
@@ -250,20 +185,11 @@ export class AuthService {
       useragentHeader,
     );
 
-    await this.authUtils.createActivityLog(
-      ActivityAction.TOKEN_REFRESH_SUCCESS,
-      stored.user.id,
-      req,
-      {
-        oldTokenId: stored.id,
-        newToken: tokens.refreshToken.substring(0, 10) + '...',
-      },
-    );
-
     return tokens;
   }
 
   // ! ACTIVE SESSIONS
+  @ActivityLog(ActivityAction.SESSIONS_FOUND, ActivityAction.SESSIONS_NOT_FOUND)
   async getActiveSessions(userId: string) {
     const sessions = await this.prisma.refreshToken.findMany({
       where: {
@@ -281,11 +207,16 @@ export class AuthService {
         createdAt: true,
       },
     });
+
+    if (!sessions || sessions.length === 0) {
+      throw new NotFoundException('Not found any session');
+    }
     return sessions;
   }
 
   // ! LOGOUT
-  async logout(refreshToken: string, req?: Request) {
+  // @ActivityLog(ActivityAction.LOGOUT, ActivityAction.LOGOUT_FAILED)
+  async logout(refreshToken: string) {
     const tokenRecord = await this.prisma.refreshToken.findFirst({
       where: { token: refreshToken },
       select: { id: true, userId: true, device: true, userAgent: true },
@@ -297,17 +228,6 @@ export class AuthService {
         data: { isRevoked: true },
       });
 
-      await this.authUtils.createActivityLog(
-        ActivityAction.LOGOUT,
-        tokenRecord.userId,
-        req,
-        {
-          tokenId: tokenRecord.id,
-          device: tokenRecord.device,
-          userAgent: tokenRecord.userAgent,
-        },
-      );
-
       return {
         message: 'Logged out successfully',
       };
@@ -317,7 +237,11 @@ export class AuthService {
   }
 
   // ! LOGOUT FROM SPECIAL DEVICE
-  async logoutFromDevice(userId: string, deviceId: string, req?: Request) {
+  @ActivityLog(
+    ActivityAction.LOGOUT_FROM_DEVICE,
+    ActivityAction.LOGOUT_FROM_DEVICE_FAILED,
+  )
+  async logoutFromDevice(userId: string, deviceId: string) {
     const revoked = await this.prisma.refreshToken.update({
       where: {
         id: deviceId,
@@ -337,24 +261,12 @@ export class AuthService {
     if (!revoked) {
       throw new UnauthorizedException('Device not found or not owned by user');
     }
-
-    // ? Logout form special device
-    await this.authUtils.createActivityLog(
-      ActivityAction.LOGOUT_FROM_DEVICE,
-      userId,
-      req,
-      {
-        deviceId: revoked.id,
-        device: revoked.device,
-        userAgent: revoked.userAgent,
-      },
-    );
-
     return { message: 'Logged out from specific device' };
   }
 
   // ! LOGOUT FROM ALL DEVICE
-  async logoutAll(userId: string, req?: Request) {
+  @ActivityLog(ActivityAction.LOGOUT_ALL, ActivityAction.LOGOUT_ALL_FAILED)
+  async logoutAll(userId: string) {
     const results = await this.prisma.refreshToken.updateMany({
       where: {
         userId,
@@ -366,13 +278,6 @@ export class AuthService {
     });
 
     // ? Logout from all device
-    await this.authUtils.createActivityLog(
-      ActivityAction.LOGOUT_ALL,
-      userId,
-      req,
-      { devicesRevoked: results.count },
-    );
-
     return {
       message: `Logged out from ${results.count} devices`,
     };

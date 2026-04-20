@@ -7,6 +7,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { Request } from 'express';
+import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class UserPermissionsService {
@@ -16,12 +17,11 @@ export class UserPermissionsService {
   ) {}
 
   // ! ASSIGN PERMISSION TO USER
-  async assignPermission(
-    userId: string,
-    permissionId: string,
-    currentUserId: string,
-    req?: Request,
-  ) {
+  @ActivityLog(
+    ActivityAction.ASSIGN_PERMISSION_TO_USER_SUCCESS,
+    ActivityAction.ASSIGN_PERMISSION_TO_USER_FAILED,
+  )
+  async assignPermission(userId: string, permissionId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -50,22 +50,15 @@ export class UserPermissionsService {
       data: { userId, permissionId },
     });
 
-    await this.authUtils.createActivityLog(
-      ActivityAction.ASSIGN_PERMISSION_TO_USER_SUCCESS,
-      currentUserId,
-      req,
-      { userId, permissionId },
-    );
-
     return result;
   }
 
   // ! GET USER PERMISSIONS
-  async getUserPermissions(
-    userId: string,
-    currentUserId: string,
-    req?: Request,
-  ) {
+  @ActivityLog(
+    ActivityAction.GET_USER_PERMISSIONS_SUCCESS,
+    ActivityAction.GET_USER_PERMISSIONS_FAILED,
+  )
+  async getUserPermissions(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -81,23 +74,15 @@ export class UserPermissionsService {
       },
     });
 
-    await this.authUtils.createActivityLog(
-      ActivityAction.GET_USER_PERMISSIONS_SUCCESS,
-      currentUserId,
-      req,
-      { userId },
-    );
-
     return permissions;
   }
 
   // ! REMOVE USER PERMISSION
-  async removeUserPermission(
-    userId: string,
-    permissionId: string,
-    currentUserId: string,
-    req?: Request,
-  ) {
+  @ActivityLog(
+    ActivityAction.REMOVE_PERMISSION_FROM_USER_SUCCESS,
+    ActivityAction.REMOVE_PERMISSION_FROM_USER_FAILED,
+  )
+  async removeUserPermission(userId: string, permissionId: string) {
     const existing = await this.prisma.userPermission.findFirst({
       where: { userId, permissionId },
     });
@@ -109,13 +94,6 @@ export class UserPermissionsService {
     await this.prisma.userPermission.delete({
       where: { id: existing.id },
     });
-
-    await this.authUtils.createActivityLog(
-      ActivityAction.REMOVE_PERMISSION_FROM_USER_SUCCESS,
-      currentUserId,
-      req,
-      { userId, permissionId },
-    );
 
     return { message: 'Permission removed from user' };
   }

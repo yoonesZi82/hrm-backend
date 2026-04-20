@@ -4,11 +4,3 @@ export enum AppPermission {
   UPDATE_MEMBER_ROLE = 'UPDATE_MEMBER_ROLE',
   VIEW_MEMBERS = 'VIEW_MEMBERS',
 }
-
-export enum OrgRole {
-  OWNER = 'OWNER',
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  HR = 'HR',
-  EMPLOYEE = 'EMPLOYEE',
-}

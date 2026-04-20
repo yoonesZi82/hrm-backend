@@ -5,6 +5,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Request } from 'express';
 import { ActivityAction } from 'src/common/enums/activity-action.enum';
 import { Prisma } from '@prisma/client';
+import { UAParser } from 'ua-parser-js';
+import * as geoip from 'geoip-lite';
 
 @Injectable()
 export class AuthUtilsService {
@@ -57,19 +59,51 @@ export class AuthUtilsService {
     req?: Request,
     metadata?: Prisma.JsonValue,
   ) {
-    const device = req?.useragent
-      ? `${req.useragent.browser} (${req.useragent.os})`
-      : null;
+    const userAgent = req?.headers['user-agent'];
+    let ip = req?.ip ?? null;
 
-    const userAgent = req?.headers['user-agent'] ?? null;
+    if (
+      ip === '::1' ||
+      ip === '127.0.0.1' ||
+      ip?.startsWith('::ffff:127.0.0.1')
+    ) {
+      ip = '8.8.8.8'; // ? USA
+    }
+
+    const parser = new UAParser(userAgent);
+
+    const device = parser.getDevice().model || 'Desktop';
+    const browser = parser.getBrowser().name || 'Unknown';
+    const os = parser.getOS().name || 'Unknown';
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    let country: string | null = null;
+    let city: string | null = null;
+
+    if (ip) {
+      const geo = geoip.lookup(ip);
+      if (geo) {
+        latitude = geo.ll[0];
+        longitude = geo.ll[1];
+        country = geo.country;
+        city = geo.city || null;
+      }
+    }
 
     await this.prisma.activityLog.create({
       data: {
         action,
         userId: userId ?? null,
-        ip: req?.ip ?? null,
+        ip,
         device,
+        browser,
+        os,
         userAgent,
+        latitude,
+        longitude,
+        country,
+        city,
         metadata,
       },
     });

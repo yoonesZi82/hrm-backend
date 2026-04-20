@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './user-permission/users.module';
+import { UsersPermissionModule } from './user-permission/users-permission.module';
 import { EmployeesModule } from './employees/employees.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DepartmentsModule } from './departments/departments.module';
@@ -19,6 +19,9 @@ import { FilesModule } from './files/files.module';
 import { OrganizationMembersModule } from './organization-members/organization-members.module';
 import { PermissionModule } from './permission/permission.module';
 import { InvitationModule } from './invitation/invitation.module';
+import { UsersModule } from './users/users.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
 
 @Module({
   imports: [
@@ -27,6 +30,7 @@ import { InvitationModule } from './invitation/invitation.module';
     }),
     AuthModule,
     PrismaModule,
+    UsersPermissionModule,
     UsersModule,
     EmployeesModule,
     OrganizationsModule,
@@ -44,6 +48,12 @@ import { InvitationModule } from './invitation/invitation.module';
     InvitationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ActivityLogInterceptor,
+    },
+  ],
 })
 export class AppModule {}

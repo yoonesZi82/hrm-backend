@@ -21,8 +21,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { OrgRole } from '@/common/enums/permission.enum';
 import { AssignRolePermissionDto } from './dto/assign-role-permission.dto';
+import { OrgRole } from '@/common/enums/org-role.enum';
 
 @ApiTags('Permissions')
 @ApiBearerAuth()
@@ -38,12 +38,8 @@ export class PermissionsController {
   @Post()
   @ApiOperation({ summary: 'Create permission' })
   @ApiBody({ type: CreatePermissionDto })
-  createPermission(
-    @Body() dto: CreatePermissionDto,
-    @CurrentUser('id') userId: string,
-    @Req() req?: Request,
-  ) {
-    return this.service.createPermission(dto, userId, req);
+  createPermission(@Body() dto: CreatePermissionDto) {
+    return this.service.createPermission(dto);
   }
 
   // ! POST /roles/:role/permissions
@@ -54,15 +50,8 @@ export class PermissionsController {
   assignPermissionToRole(
     @Param('role') role: OrgRole,
     @Body() dto: AssignRolePermissionDto,
-    @CurrentUser('id') userId: string,
-    @Req() req?: Request,
   ) {
-    return this.service.assignPermissionToRole(
-      role,
-      dto.permissionId,
-      userId,
-      req,
-    );
+    return this.service.assignPermissionToRole(role, dto.permissionId);
   }
 
   // ! GET /roles/:role/permissions
@@ -80,8 +69,8 @@ export class PermissionsController {
   // ! GET /permissions
   @Get()
   @ApiOperation({ summary: 'Get all permissions' })
-  getAllPermissions(@CurrentUser('id') userId: string, @Req() req?: Request) {
-    return this.service.getAllPermissions(userId, req);
+  getAllPermissions() {
+    return this.service.getAllPermissions();
   }
 
   // ! DELETE /permissions/roles/:role/permissions/:permissionId
@@ -91,25 +80,14 @@ export class PermissionsController {
   removePermissionFromRole(
     @Param('role') role: OrgRole,
     @Param('permissionId') permissionId: string,
-    @CurrentUser('id') userId: string,
-    @Req() req?: Request,
   ) {
-    return this.service.removePermissionFromRole(
-      role,
-      permissionId,
-      userId,
-      req,
-    );
+    return this.service.removePermissionFromRole(role, permissionId);
   }
 
   // ! DELETE /permissions/:permissionId
   @Delete(':permissionId')
   @ApiOperation({ summary: 'Delete permission' })
-  deletePermission(
-    @Param('permissionId') permissionId: string,
-    @CurrentUser('id') userId: string,
-    @Req() req?: Request,
-  ) {
-    return this.service.deletePermission(permissionId, userId, req);
+  deletePermission(@Param('permissionId') permissionId: string) {
+    return this.service.deletePermission(permissionId);
   }
 }
