@@ -33,8 +33,8 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, req: Request) {
+    return this.authService.register(dto, req);
   }
 
   // ! LOGIN
@@ -94,7 +94,7 @@ export class AuthController {
 
     res.clearCookie('refreshToken');
 
-    return this.authService.logout(token as string);
+    return this.authService.logout(token as string, req);
   }
 
   // ! CURRENT USER

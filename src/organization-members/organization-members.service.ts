@@ -44,8 +44,6 @@ export class OrganizationMembersService {
     dto: AddMemberDto,
     req?: Request,
   ) {
-    // await this.checkHasMember(currentUserId, orgId, req);
-
     const exists = await this.prisma.organizationMember.findFirst({
       where: { userId: dto.userId, organizationId: orgId },
     });
@@ -82,7 +80,7 @@ export class OrganizationMembersService {
   async getMembers(userId: string, orgId: string) {
     await this.checkHasMember(userId, orgId);
 
-    return this.prisma.organizationMember.findMany({
+    const members = await this.prisma.organizationMember.findMany({
       where: { organizationId: orgId },
       include: {
         user: {
@@ -94,6 +92,8 @@ export class OrganizationMembersService {
         },
       },
     });
+
+    return members;
   }
 
   // ? UPDATE ROLE

@@ -22,6 +22,7 @@ import {
 
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
+import { Request } from 'express';
 
 @ApiTags('Departments')
 @ApiBearerAuth()
@@ -39,16 +40,21 @@ export class DepartmentsController {
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: CreateDepartmentDto,
+    req: Request,
   ) {
-    return this.service.create(orgId, userId, dto);
+    return this.service.create(orgId, userId, dto, req);
   }
 
   // ! GET /organizations/:orgId/departments
   @Get('organizations/:orgId/departments')
   @ApiOperation({ summary: 'Get departments list' })
   @ApiParam({ name: 'orgId' })
-  findAll(@Param('orgId') orgId: string, @CurrentUser('id') userId: string) {
-    return this.service.findAll(orgId, userId);
+  findAll(
+    @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    req: Request,
+  ) {
+    return this.service.findAll(orgId, userId, req);
   }
 
   // ! PATCH /departments/:id
@@ -60,15 +66,20 @@ export class DepartmentsController {
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
     @Body() dto: UpdateDepartmentDto,
+    req: Request,
   ) {
-    return this.service.update(id, userId, dto);
+    return this.service.update(id, userId, dto, req);
   }
 
   // ! DELETE /departments/:id
   @Delete('departments/:id')
   @ApiOperation({ summary: 'Delete department' })
   @ApiParam({ name: 'id' })
-  delete(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.service.delete(id, userId);
+  delete(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    req: Request,
+  ) {
+    return this.service.delete(id, userId, req);
   }
 }

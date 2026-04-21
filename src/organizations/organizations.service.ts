@@ -11,7 +11,6 @@ import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { Request } from 'express';
 import { normalizeSlug } from '@/lib/utils';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class OrganizationsService {
@@ -21,11 +20,7 @@ export class OrganizationsService {
   ) {}
 
   // ? 1. CREATE
-  @ActivityLog(
-    ActivityAction.CREATE_ORGANIZATION_SUCCESS,
-    ActivityAction.CREATE_ORGANIZATION_FAILED,
-  )
-  async create(userId: string, dto: CreateOrganizationDto) {
+  async create(userId: string, dto: CreateOrganizationDto, req?: Request) {
     const slug = normalizeSlug(dto.slug);
 
     const exists = await this.prisma.organization.findUnique({
@@ -33,6 +28,12 @@ export class OrganizationsService {
     });
 
     if (exists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.CREATE_ORGANIZATION_FAILED,
+        userId,
+        req,
+        { reason: 'Slug already exists' },
+      );
       throw new ConflictException('Slug already exists');
     }
 
@@ -61,15 +62,18 @@ export class OrganizationsService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.CREATE_ORGANIZATION_FAILED,
+      userId,
+      req,
+      { orgId: org.id, reason: 'Create organization successfully' },
+    );
+
     return org;
   }
 
   // ? 2. GET BY ID
-  @ActivityLog(
-    ActivityAction.GET_ORGANIZATION_SUCCESS,
-    ActivityAction.GET_ORGANIZATION_FAILED,
-  )
-  async getAll() {
+  async getAll(userId: string, req?: Request) {
     const orgs = await this.prisma.organization.findMany({
       include: {
         owner: true,
@@ -80,23 +84,38 @@ export class OrganizationsService {
     });
 
     if (!orgs) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.GET_ORGANIZATION_FAILED,
+        userId,
+        req,
+        { reason: 'Organizations not found' },
+      );
       throw new NotFoundException('Organizations not found');
     }
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.GET_ORGANIZATION_SUCCESS,
+      userId,
+      req,
+      { reason: 'Found organizations' },
+    );
 
     return orgs;
   }
 
   // ? 3. GET BY ID
-  @ActivityLog(
-    ActivityAction.GET_ORGANIZATION_SUCCESS,
-    ActivityAction.GET_ORGANIZATION_FAILED,
-  )
-  async findById(userId: string, orgId: string) {
+  async findById(userId: string, orgId: string, req?: Request) {
     const member = await this.prisma.organizationMember.findFirst({
       where: { organizationId: orgId, userId },
     });
 
     if (!member) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.MEMBER_NOTFOUND,
+        userId,
+        req,
+        { reason: 'Member not found' },
+      );
       throw new ForbiddenException('Member not found');
     }
 
@@ -111,17 +130,26 @@ export class OrganizationsService {
     });
 
     if (!org) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.GET_ORGANIZATION_FAILED,
+        userId,
+        req,
+        { reason: 'Organization not found' },
+      );
       throw new NotFoundException('Organization not found');
     }
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.GET_ORGANIZATION_SUCCESS,
+      userId,
+      req,
+      { orgId: org.id, reason: 'Found organization' },
+    );
 
     return org;
   }
 
   // ? 4. UPDATE
-  @ActivityLog(
-    ActivityAction.UPDATE_ORGANIZATION_SUCCESS,
-    ActivityAction.UPDATE_ORGANIZATION_FAILED,
-  )
   async update(
     userId: string,
     orgId: string,
@@ -133,6 +161,12 @@ export class OrganizationsService {
     });
 
     if (!member) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.MEMBER_NOTFOUND,
+        userId,
+        req,
+        { reason: 'Member not found' },
+      );
       throw new NotFoundException('Member not found');
     }
 
@@ -150,7 +184,7 @@ export class OrganizationsService {
       throw new ForbiddenException('Your not access');
     }
 
-    const updated = await this.prisma.organization.update({
+    const newOrg = await this.prisma.organization.update({
       where: { id: orgId },
       data: {
         name: dto.name,
@@ -159,24 +193,39 @@ export class OrganizationsService {
       },
     });
 
-    return updated;
+    await this.authUtils.createActivityLog(
+      ActivityAction.UPDATE_ORGANIZATION_SUCCESS,
+      userId,
+      req,
+      { orgID: newOrg.id, reason: 'Update organization successfully' },
+    );
+
+    return newOrg;
   }
 
   // ? 5. DELETE
-  @ActivityLog(
-    ActivityAction.DELETE_ORGANIZATION_SUCCESS,
-    ActivityAction.DELETE_ORGANIZATION_FAILED,
-  )
-  async delete(userId: string, orgId: string) {
+  async delete(userId: string, orgId: string, req?: Request) {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
     });
 
     if (!org) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.DELETE_ORGANIZATION_FAILED,
+        userId,
+        req,
+        { reason: 'Organization not found' },
+      );
       throw new NotFoundException('Organization not found');
     }
 
     if (!(await this.isOwnerOrg(userId, orgId))) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.DELETE_ORGANIZATION_FAILED,
+        userId,
+        req,
+        { reason: 'Only owner can delete' },
+      );
       throw new ForbiddenException('Only owner can delete');
     }
 
@@ -193,6 +242,13 @@ export class OrganizationsService {
       await tx.subscription.deleteMany({ where: { organizationId: orgId } });
       return tx.organization.delete({ where: { id: orgId } });
     });
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.DELETE_ORGANIZATION_SUCCESS,
+      userId,
+      req,
+      { orgId: org.id, reason: 'Organization deleted successfully' },
+    );
 
     return { message: 'Organization deleted successfully' };
   }

@@ -36,15 +36,16 @@ export class UserPermissionsController {
   assignPermission(
     @Param('userId') userId: string,
     @Body() dto: AssignUserPermissionDto,
+    req: Request,
   ) {
-    return this.service.assignPermission(userId, dto.permissionId);
+    return this.service.assignPermission(userId, dto.permissionId, req);
   }
 
   // ! GET /users/:userId/permissions
   @Get()
   @ApiOperation({ summary: 'Get user permissions' })
-  getUserPermissions(@Param('userId') userId: string) {
-    return this.service.getUserPermissions(userId);
+  getUserPermissions(@Param('userId') userId: string, req: Request) {
+    return this.service.getUserPermissions(userId, req);
   }
 
   // ! DELETE /users/:userId/permissions/:permissionId
@@ -53,7 +54,8 @@ export class UserPermissionsController {
   removeUserPermission(
     @Param('userId') userId: string,
     @Param('permissionId') permissionId: string,
+    req: Request,
   ) {
-    return this.service.removeUserPermission(userId, permissionId);
+    return this.service.removeUserPermission(userId, permissionId, req);
   }
 }

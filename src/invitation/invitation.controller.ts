@@ -51,8 +51,12 @@ export class InvitationsController {
   // ! ACCEPT
   @Post('/accept')
   @ApiOperation({ summary: 'Accept invitation' })
-  accept(@CurrentUser('id') userId: string, @Body() dto: AcceptInvitationDto) {
-    return this.service.acceptInvitation(userId, dto.token);
+  accept(
+    @CurrentUser('id') userId: string,
+    @Body() dto: AcceptInvitationDto,
+    @Req() req?: Request,
+  ) {
+    return this.service.acceptInvitation(userId, dto.token, req);
   }
 
   // ! REVOKE
@@ -60,8 +64,9 @@ export class InvitationsController {
   revoke(
     @CurrentUser('id') userId: string,
     @Param('invitationId') invitationId: string,
+    @Req() req?: Request,
   ) {
-    return this.service.revokeInvitation(userId, invitationId);
+    return this.service.revokeInvitation(userId, invitationId, req);
   }
 
   // ! REMOVE
@@ -69,7 +74,8 @@ export class InvitationsController {
   delete(
     @CurrentUser('id') userId: string,
     @Param('invitationId') invitationId: string,
+    @Req() req?: Request,
   ) {
-    return this.service.removeInvitation(userId, invitationId);
+    return this.service.removeInvitation(userId, invitationId, req);
   }
 }

@@ -11,7 +11,6 @@ import { addDays } from 'date-fns';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { Request } from 'express';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class InvitationsService {
@@ -21,19 +20,15 @@ export class InvitationsService {
   ) {}
 
   // ! CREATE INVITATION
-  @ActivityLog(
-    ActivityAction.CREATE_INVITATION_SUCCESS,
-    ActivityAction.CREATE_INVITATION_FAILED,
-  )
   async createInvitation(
-    currentUserId: string,
+    userId: string,
     orgId: string,
     email: string,
     role: string,
     req?: Request,
   ) {
     const member = await this.prisma.organizationMember.findFirst({
-      where: { userId: currentUserId, organizationId: orgId },
+      where: { userId, organizationId: orgId },
       include: {
         user: true,
       },
@@ -42,9 +37,9 @@ export class InvitationsService {
     if (!member || !['OWNER', 'ADMIN'].includes(member.role)) {
       await this.authUtils.createActivityLog(
         ActivityAction.NOT_ACCESS,
-        currentUserId,
+        userId,
         req,
-        { userId: currentUserId, reason: 'No permission' },
+        { userId: userId, reason: 'No permission' },
       );
       throw new ForbiddenException('No permission');
     }
@@ -57,6 +52,12 @@ export class InvitationsService {
     });
 
     if (existingMember) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.CREATE_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Member is already in organization' },
+      );
       throw new BadRequestException('Member is already in organization');
     }
 
@@ -69,6 +70,12 @@ export class InvitationsService {
     });
 
     if (existingInvitation) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.CREATE_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'The active invite for user this organization yet' },
+      );
       throw new BadRequestException(
         'The active invite for user this organization yet',
       );
@@ -86,6 +93,13 @@ export class InvitationsService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.CREATE_INVITATION_SUCCESS,
+      userId,
+      req,
+      { invitationId: invitation.id, reason: 'Create invitation successfully' },
+    );
+
     return {
       ...invitation,
       inviteLink: `https://yourapp.com/invite/${token}`,
@@ -93,45 +107,71 @@ export class InvitationsService {
   }
 
   // ! ACCEPT INVITATION
-  @ActivityLog(
-    ActivityAction.ACCEPT_INVITATION_SUCCESS,
-    ActivityAction.ACCEPT_INVITATION_FAILED,
-  )
-  async acceptInvitation(currentUserId: string, token: string) {
+  async acceptInvitation(userId: string, token: string, req?: Request) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { token },
     });
 
     if (!invitation) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ACCEPT_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Invitation not found' },
+      );
       throw new NotFoundException('Invitation not found');
     }
 
     if (invitation.status !== 'PENDING') {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ACCEPT_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Invitation already used or revoke' },
+      );
       throw new ConflictException('Invitation already used or revoke');
     }
 
     if (invitation.expiresAt < new Date()) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ACCEPT_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Invitation expired' },
+      );
       throw new ForbiddenException('Invitation expired');
     }
 
     // check user email match
     const user = await this.prisma.user.findUnique({
-      where: { id: currentUserId },
+      where: { id: userId },
     });
 
     if (!user || user.email !== invitation.email) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ACCEPT_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Email does not match invitation' },
+      );
       throw new ForbiddenException('Email does not match invitation');
     }
 
     // ? check already member
     const exists = await this.prisma.organizationMember.findFirst({
       where: {
-        userId: currentUserId,
+        userId: userId,
         organizationId: invitation.organizationId,
       },
     });
 
     if (exists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ACCEPT_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Already member' },
+      );
       throw new ConflictException('Already member');
     }
 
@@ -139,7 +179,7 @@ export class InvitationsService {
     await this.prisma.$transaction([
       this.prisma.organizationMember.create({
         data: {
-          userId: currentUserId,
+          userId: userId,
           organizationId: invitation.organizationId,
           role: invitation.role,
         },
@@ -150,37 +190,54 @@ export class InvitationsService {
       }),
     ]);
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.ACCEPT_INVITATION_SUCCESS,
+      userId,
+      req,
+      { reason: 'Invitation accepted successfully' },
+    );
+
     return { message: 'Invitation accepted successfully' };
   }
 
   // ! GET INVITATIONS
-  async getInvitations(currentUserId: string, orgId: string) {
+  async getInvitations(userId: string, orgId: string) {
     const member = await this.prisma.organizationMember.findFirst({
-      where: { userId: currentUserId, organizationId: orgId },
+      where: { userId: userId, organizationId: orgId },
     });
 
     if (!member) throw new ForbiddenException();
 
-    return this.prisma.invitation.findMany({
+    const invitations = this.prisma.invitation.findMany({
       where: { organizationId: orgId },
     });
+
+    return invitations;
   }
 
   // ! REVOKE INVITATION
-  @ActivityLog(
-    ActivityAction.REVOKE_INVITATION_SUCCESS,
-    ActivityAction.REVOKE_INVITATION_FAILED,
-  )
-  async revokeInvitation(currentUserId: string, invitationId: string) {
+  async revokeInvitation(userId: string, invitationId: string, req?: Request) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { id: invitationId },
     });
 
     if (!invitation) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REVOKE_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Not found invite' },
+      );
       throw new NotFoundException('Not found invite');
     }
 
     if (invitation.status !== 'PENDING') {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REVOKE_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'This invite is not active' },
+      );
       throw new BadRequestException('This invite is not active');
     }
 
@@ -189,20 +246,29 @@ export class InvitationsService {
       data: { status: 'REVOKED' },
     });
 
-    return { message: 'Invitation revoked' };
+    await this.authUtils.createActivityLog(
+      ActivityAction.REVOKE_INVITATION_SUCCESS,
+      userId,
+      req,
+      { reason: 'Invitation is revoked' },
+    );
+
+    return { message: 'Invitation is revoked' };
   }
 
   // ! REMOVE INVITATION
-  @ActivityLog(
-    ActivityAction.REMOVE_INVITATION_SUCCESS,
-    ActivityAction.REMOVE_INVITATION_FAILED,
-  )
-  async removeInvitation(currentUserId: string, invitationId: string) {
+  async removeInvitation(userId: string, invitationId: string, req?: Request) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { id: invitationId },
     });
 
     if (!invitation) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REMOVE_INVITATION_FAILED,
+        userId,
+        req,
+        { reason: 'Not found invite' },
+      );
       throw new NotFoundException('Not found invite');
     }
 
@@ -210,6 +276,12 @@ export class InvitationsService {
       where: { id: invitationId },
     });
 
-    return { message: 'Invite remove successfully' };
+    await this.authUtils.createActivityLog(
+      ActivityAction.REMOVE_INVITATION_SUCCESS,
+      userId,
+      req,
+      { reason: 'Invite is remove successfully' },
+    );
+    return { message: 'Invite is remove successfully' };
   }
 }

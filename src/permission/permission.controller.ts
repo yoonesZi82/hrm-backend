@@ -38,8 +38,12 @@ export class PermissionsController {
   @Post()
   @ApiOperation({ summary: 'Create permission' })
   @ApiBody({ type: CreatePermissionDto })
-  createPermission(@Body() dto: CreatePermissionDto) {
-    return this.service.createPermission(dto);
+  createPermission(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreatePermissionDto,
+    req: Request,
+  ) {
+    return this.service.createPermission(userId, dto, req);
   }
 
   // ! POST /roles/:role/permissions
@@ -48,10 +52,17 @@ export class PermissionsController {
   @ApiParam({ name: 'role', enum: OrgRole })
   @ApiBody({ type: AssignRolePermissionDto })
   assignPermissionToRole(
+    @CurrentUser('id') userId: string,
     @Param('role') role: OrgRole,
     @Body() dto: AssignRolePermissionDto,
+    req: Request,
   ) {
-    return this.service.assignPermissionToRole(role, dto.permissionId);
+    return this.service.assignPermissionToRole(
+      userId,
+      role,
+      dto.permissionId,
+      req,
+    );
   }
 
   // ! GET /roles/:role/permissions
@@ -78,16 +89,27 @@ export class PermissionsController {
   @ApiOperation({ summary: 'Remove permission from role' })
   @ApiParam({ name: 'role', enum: OrgRole })
   removePermissionFromRole(
+    @CurrentUser('id') userId: string,
     @Param('role') role: OrgRole,
     @Param('permissionId') permissionId: string,
+    @Req() req?: Request,
   ) {
-    return this.service.removePermissionFromRole(role, permissionId);
+    return this.service.removePermissionFromRole(
+      userId,
+      role,
+      permissionId,
+      req,
+    );
   }
 
   // ! DELETE /permissions/:permissionId
   @Delete(':permissionId')
   @ApiOperation({ summary: 'Delete permission' })
-  deletePermission(@Param('permissionId') permissionId: string) {
-    return this.service.deletePermission(permissionId);
+  deletePermission(
+    @CurrentUser('id') userId: string,
+    @Param('permissionId') permissionId: string,
+    @Req() req?: Request,
+  ) {
+    return this.service.deletePermission(userId, permissionId, req);
   }
 }

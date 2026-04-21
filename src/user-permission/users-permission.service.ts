@@ -7,7 +7,6 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { Request } from 'express';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class UserPermissionsService {
@@ -17,16 +16,18 @@ export class UserPermissionsService {
   ) {}
 
   // ! ASSIGN PERMISSION TO USER
-  @ActivityLog(
-    ActivityAction.ASSIGN_PERMISSION_TO_USER_SUCCESS,
-    ActivityAction.ASSIGN_PERMISSION_TO_USER_FAILED,
-  )
-  async assignPermission(userId: string, permissionId: string) {
+  async assignPermission(userId: string, permissionId: string, req?: Request) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ASSIGN_PERMISSION_TO_USER_FAILED,
+        userId,
+        req,
+        { reason: 'User not found' },
+      );
       throw new NotFoundException('User not found');
     }
 
@@ -35,6 +36,12 @@ export class UserPermissionsService {
     });
 
     if (!permission) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ASSIGN_PERMISSION_TO_USER_FAILED,
+        userId,
+        req,
+        { reason: 'Permission not found' },
+      );
       throw new NotFoundException('Permission not found');
     }
 
@@ -43,6 +50,12 @@ export class UserPermissionsService {
     });
 
     if (exists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ASSIGN_PERMISSION_TO_USER_FAILED,
+        userId,
+        req,
+        { reason: 'Permission already assigned to user' },
+      );
       throw new ConflictException('Permission already assigned to user');
     }
 
@@ -50,20 +63,29 @@ export class UserPermissionsService {
       data: { userId, permissionId },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.ASSIGN_PERMISSION_TO_USER_SUCCESS,
+      userId,
+      req,
+      { reason: 'Assign permission to user successfully' },
+    );
+
     return result;
   }
 
   // ! GET USER PERMISSIONS
-  @ActivityLog(
-    ActivityAction.GET_USER_PERMISSIONS_SUCCESS,
-    ActivityAction.GET_USER_PERMISSIONS_FAILED,
-  )
-  async getUserPermissions(userId: string) {
+  async getUserPermissions(userId: string, req?: Request) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.GET_USER_PERMISSIONS_FAILED,
+        userId,
+        req,
+        { reason: 'User not found' },
+      );
       throw new NotFoundException('User not found');
     }
 
@@ -74,26 +96,45 @@ export class UserPermissionsService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.GET_USER_PERMISSIONS_SUCCESS,
+      userId,
+      req,
+      { reason: 'User permission found' },
+    );
     return permissions;
   }
 
   // ! REMOVE USER PERMISSION
-  @ActivityLog(
-    ActivityAction.REMOVE_PERMISSION_FROM_USER_SUCCESS,
-    ActivityAction.REMOVE_PERMISSION_FROM_USER_FAILED,
-  )
-  async removeUserPermission(userId: string, permissionId: string) {
+  async removeUserPermission(
+    userId: string,
+    permissionId: string,
+    req?: Request,
+  ) {
     const existing = await this.prisma.userPermission.findFirst({
       where: { userId, permissionId },
     });
 
     if (!existing) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REMOVE_PERMISSION_FROM_USER_FAILED,
+        userId,
+        req,
+        { reason: 'User permission not found' },
+      );
       throw new NotFoundException('User permission not found');
     }
 
     await this.prisma.userPermission.delete({
       where: { id: existing.id },
     });
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.REMOVE_PERMISSION_FROM_USER_SUCCESS,
+      userId,
+      req,
+      { reason: 'Permission removed from user' },
+    );
 
     return { message: 'Permission removed from user' };
   }

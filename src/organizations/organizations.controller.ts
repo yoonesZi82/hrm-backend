@@ -41,8 +41,9 @@ export class OrganizationsController {
   create(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateOrganizationDto,
+    req?: Request,
   ) {
-    return this.service.create(userId, dto);
+    return this.service.create(userId, dto, req);
   }
 
   @Get()
@@ -50,8 +51,8 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organizations found' })
   @ApiResponse({ status: 403, description: 'Access denied' })
   @ApiResponse({ status: 404, description: 'Organizations not found' })
-  getAll() {
-    return this.service.getAll();
+  getAll(@CurrentUser('id') userId: string, req?: Request) {
+    return this.service.getAll(userId, req);
   }
 
   // ? GET BY ID
@@ -61,8 +62,12 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organization found' })
   @ApiResponse({ status: 403, description: 'Access denied' })
   @ApiResponse({ status: 404, description: 'Organization not found' })
-  getById(@CurrentUser('id') userId: string, @Param('id') id: string) {
-    return this.service.findById(userId, id);
+  getById(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    req?: Request,
+  ) {
+    return this.service.findById(userId, id, req);
   }
 
   // ? UPDATE
@@ -88,7 +93,11 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organization deleted' })
   @ApiResponse({ status: 403, description: 'Only owner can delete' })
   @ApiResponse({ status: 404, description: 'Organization not found' })
-  delete(@CurrentUser('id') userId: string, @Param('id') id: string) {
-    return this.service.delete(userId, id);
+  delete(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    req?: Request,
+  ) {
+    return this.service.delete(userId, id, req);
   }
 }

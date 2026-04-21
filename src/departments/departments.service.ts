@@ -9,7 +9,7 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
+import { Request } from 'express';
 
 @Injectable()
 export class DepartmentsService {
@@ -29,11 +29,12 @@ export class DepartmentsService {
   }
 
   // ! CREATE
-  @ActivityLog(
-    ActivityAction.CREATE_DEPARTMENT_SUCCESS,
-    ActivityAction.CREATE_DEPARTMENT_FAILED,
-  )
-  async create(orgId: string, userId: string, dto: CreateDepartmentDto) {
+  async create(
+    orgId: string,
+    userId: string,
+    dto: CreateDepartmentDto,
+    req?: Request,
+  ) {
     await this.checkMember(orgId, userId);
 
     const exist = await this.prisma.department.findFirst({
@@ -44,6 +45,12 @@ export class DepartmentsService {
     });
 
     if (exist) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.CREATE_DEPARTMENT_FAILED,
+        userId,
+        req,
+        { reason: 'The department is already' },
+      );
       throw new ConflictException('The department is already');
     }
 
@@ -55,15 +62,18 @@ export class DepartmentsService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.CREATE_DEPARTMENT_SUCCESS,
+      userId,
+      req,
+      { reason: 'Create department successfully' },
+    );
+
     return department;
   }
 
   // ! GET ALL
-  @ActivityLog(
-    ActivityAction.GET_DEPARTMENTS_SUCCESS,
-    ActivityAction.GET_DEPARTMENTS_FAILED,
-  )
-  async findAll(orgId: string, userId: string) {
+  async findAll(orgId: string, userId: string, req?: Request) {
     await this.checkMember(orgId, userId);
 
     const departments = await this.prisma.department.findMany({
@@ -71,51 +81,93 @@ export class DepartmentsService {
     });
 
     if (!departments || departments.length === 0) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.GET_DEPARTMENTS_FAILED,
+        userId,
+        req,
+        { reason: 'Departments any not found' },
+      );
       throw new NotFoundException('Departments any not found');
     }
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.GET_DEPARTMENTS_SUCCESS,
+      userId,
+      req,
+      { reason: 'Get departments successfully' },
+    );
 
     return departments;
   }
 
   // ! UPDATE
-  @ActivityLog(
-    ActivityAction.UPDATE_DEPARTMENT_FAILED,
-    ActivityAction.UPDATE_DEPARTMENT_SUCCESS,
-  )
-  async update(id: string, userId: string, dto: UpdateDepartmentDto) {
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateDepartmentDto,
+    req?: Request,
+  ) {
     const department = await this.prisma.department.findUnique({
       where: { id },
     });
 
-    if (!department) throw new NotFoundException('Department not found');
+    if (!department) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.UPDATE_DEPARTMENT_FAILED,
+        userId,
+        req,
+        { reason: 'Department not found' },
+      );
+      throw new NotFoundException('Department not found');
+    }
 
     await this.checkMember(department.organizationId, userId);
 
-    const updated = await this.prisma.department.update({
+    const newDepartment = await this.prisma.department.update({
       where: { id },
       data: dto,
     });
 
-    return updated;
+    await this.authUtils.createActivityLog(
+      ActivityAction.UPDATE_DEPARTMENT_SUCCESS,
+      userId,
+      req,
+      {
+        departmentId: newDepartment.id,
+        reason: 'Update department successfully',
+      },
+    );
+    return newDepartment;
   }
 
   // ! DELETE
-  @ActivityLog(
-    ActivityAction.DELETE_DEPARTMENT_FAILED,
-    ActivityAction.DELETE_DEPARTMENT_SUCCESS,
-  )
-  async delete(id: string, userId: string) {
+  async delete(id: string, userId: string, req?: Request) {
     const department = await this.prisma.department.findUnique({
       where: { id },
     });
 
-    if (!department) throw new NotFoundException('Department not found');
+    if (!department) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.DELETE_DEPARTMENT_FAILED,
+        userId,
+        req,
+        { reason: 'Department not found' },
+      );
+      throw new NotFoundException('Department not found');
+    }
 
     await this.checkMember(department.organizationId, userId);
 
     await this.prisma.department.delete({
       where: { id },
     });
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.DELETE_DEPARTMENT_SUCCESS,
+      userId,
+      req,
+      { reason: 'Department deleted' },
+    );
 
     return { message: 'Department deleted' };
   }

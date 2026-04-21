@@ -8,7 +8,6 @@ import { CreatePermissionDto } from './dto/create-permission.dto';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { Request } from 'express';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class PermissionsService {
@@ -18,16 +17,22 @@ export class PermissionsService {
   ) {}
 
   // ! CREATE PERMISSION
-  @ActivityLog(
-    ActivityAction.CREATE_PERMISSION_SUCCESS,
-    ActivityAction.CREATE_PERMISSION_FAILED,
-  )
-  async createPermission(dto: CreatePermissionDto) {
+  async createPermission(
+    userId: string,
+    dto: CreatePermissionDto,
+    req?: Request,
+  ) {
     const exists = await this.prisma.permission.findUnique({
       where: { name: dto.name },
     });
 
     if (exists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.CREATE_PERMISSION_FAILED,
+        userId,
+        req,
+        { reason: 'Permission exists' },
+      );
       throw new ConflictException('Permission exists');
     }
 
@@ -35,20 +40,34 @@ export class PermissionsService {
       data: { name: dto.name },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.CREATE_PERMISSION_SUCCESS,
+      userId,
+      req,
+      { permissionId: permission.id, reason: 'Create permission successfully' },
+    );
+
     return permission;
   }
 
   // ! ASSIGN PERMISSION TO ROLE
-  @ActivityLog(
-    ActivityAction.ASSIGN_PERMISSION_TO_ROLE_SUCCESS,
-    ActivityAction.ASSIGN_PERMISSION_TO_ROLE_FAILED,
-  )
-  async assignPermissionToRole(role: string, permissionId: string) {
+  async assignPermissionToRole(
+    userId: string,
+    role: string,
+    permissionId: string,
+    req?: Request,
+  ) {
     const permission = await this.prisma.permission.findUnique({
       where: { id: permissionId },
     });
 
     if (!permission) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.ASSIGN_PERMISSION_TO_ROLE_FAILED,
+        userId,
+        req,
+        { reason: 'Permission not found' },
+      );
       throw new NotFoundException('Permission not found');
     }
 
@@ -59,14 +78,17 @@ export class PermissionsService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.ASSIGN_PERMISSION_TO_ROLE_SUCCESS,
+      userId,
+      req,
+      { reason: 'Assign permission successfully' },
+    );
+
     return rolePermission;
   }
 
   // ! GET ROLE PERMISSIONS
-  @ActivityLog(
-    ActivityAction.GET_ROLE_PERMISSIONS_SUCCESS,
-    ActivityAction.GET_ROLE_PERMISSIONS_FAILED,
-  )
   async getRolePermissions(role: string, userId: string, req?: Request) {
     const rolePermissions = await this.prisma.rolePermission.findMany({
       where: { role: role as any },
@@ -85,10 +107,6 @@ export class PermissionsService {
   }
 
   // ! GET ALL PERMISSIONS
-  @ActivityLog(
-    ActivityAction.GET_PERMISSIONS_SUCCESS,
-    ActivityAction.GET_PERMISSIONS_FAILED,
-  )
   async getAllPermissions() {
     const permissions = await this.prisma.permission.findMany();
 
@@ -96,11 +114,12 @@ export class PermissionsService {
   }
 
   // ! REMOVE PERMISSION FROM ROLE
-  @ActivityLog(
-    ActivityAction.REMOVE_PERMISSION_FROM_ROLE_SUCCESS,
-    ActivityAction.REMOVE_PERMISSION_FROM_ROLE_FAILED,
-  )
-  async removePermissionFromRole(role: string, permissionId: string) {
+  async removePermissionFromRole(
+    userId: string,
+    role: string,
+    permissionId: string,
+    req?: Request,
+  ) {
     const existing = await this.prisma.rolePermission.findFirst({
       where: {
         role: role as any,
@@ -109,6 +128,12 @@ export class PermissionsService {
     });
 
     if (!existing) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REMOVE_PERMISSION_FROM_ROLE_FAILED,
+        userId,
+        req,
+        { reason: 'RolePermission not found' },
+      );
       throw new NotFoundException('RolePermission not found');
     }
 
@@ -116,20 +141,29 @@ export class PermissionsService {
       where: { id: existing.id },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.REMOVE_PERMISSION_FROM_ROLE_SUCCESS,
+      userId,
+      req,
+      { reason: 'Permission removed from role' },
+    );
+
     return { message: 'Permission removed from role' };
   }
 
   // ! DELETE PERMISSION (OPTIONAL BUT IMPORTANT)
-  @ActivityLog(
-    ActivityAction.DELETE_PERMISSION_SUCCESS,
-    ActivityAction.DELETE_PERMISSION_FAILED,
-  )
-  async deletePermission(permissionId: string) {
+  async deletePermission(userId: string, permissionId: string, req?: Request) {
     const permission = await this.prisma.permission.findUnique({
       where: { id: permissionId },
     });
 
     if (!permission) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REMOVE_PERMISSION_FAILED,
+        userId,
+        req,
+        { reason: 'Permission not found' },
+      );
       throw new NotFoundException('Permission not found');
     }
 
@@ -144,6 +178,13 @@ export class PermissionsService {
         where: { id: permissionId },
       }),
     ]);
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.REMOVE_PERMISSION_SUCCESS,
+      userId,
+      req,
+      { reason: 'Permission deleted successfully' },
+    );
 
     return { message: 'Permission deleted successfully' };
   }

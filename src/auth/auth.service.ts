@@ -13,7 +13,6 @@ import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 
 // ? Import enum
 import { ActivityAction } from 'src/common/enums/activity-action.enum';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class AuthService {
@@ -23,8 +22,7 @@ export class AuthService {
   ) {}
 
   // ! REGISTER
-  // @ActivityLog(ActivityAction.REGISTER_SUCCESS, ActivityAction.REGISTER_FAILED)
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, req: Request) {
     const mobileExists = await this.prisma.user.findUnique({
       where: { mobile: dto.mobile },
     });
@@ -34,10 +32,22 @@ export class AuthService {
       : null;
 
     if (mobileExists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REGISTER_FAILED,
+        mobileExists.id,
+        req,
+        { reason: 'Mobile number already registered' },
+      );
       throw new ConflictException('Mobile number already registered');
     }
 
     if (emailExists) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.REGISTER_FAILED,
+        emailExists.id,
+        req,
+        { reason: 'Email is already registered' },
+      );
       throw new ConflictException('Email is already registered');
     }
 
@@ -62,11 +72,17 @@ export class AuthService {
       },
     });
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.REGISTER_SUCCESS,
+      user.id,
+      req,
+      { reason: 'User create successfully' },
+    );
+
     return user;
   }
 
   // ! LOGIN
-  // @ActivityLog(ActivityAction.LOGIN_SUCCESS, ActivityAction.LOGIN_FAILED)
   async login(dto: LoginDto, req?: Request) {
     const user = await this.prisma.user.findUnique({
       where: { mobile: dto.mobile },
@@ -81,6 +97,12 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.LOGIN_FAILED,
+        user.id,
+        req,
+        { reason: 'Invalid mobile or password' },
+      );
       throw new UnauthorizedException('Invalid mobile or password');
     }
 
@@ -96,6 +118,12 @@ export class AuthService {
     });
 
     if (activeSessions >= 2) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.LOGIN_FAILED,
+        user.id,
+        req,
+        { reason: 'Maximum number of logged-in devices reached' },
+      );
       throw new UnauthorizedException(
         'Maximum number of logged-in devices reached',
       );
@@ -124,6 +152,13 @@ export class AuthService {
     );
 
     // ? log success
+    await this.authUtils.createActivityLog(
+      ActivityAction.LOGIN_SUCCESS,
+      user.id,
+      req,
+      { reason: 'User login successfully' },
+    );
+
     return {
       user: {
         id: user.id,
@@ -137,10 +172,6 @@ export class AuthService {
   }
 
   // ! REFRESH TOKEN
-  @ActivityLog(
-    ActivityAction.TOKEN_REFRESH_SUCCESS,
-    ActivityAction.TOKEN_REFRESH_FAILED,
-  )
   async refreshToken(token: string, req?: Request) {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token },
@@ -152,10 +183,22 @@ export class AuthService {
     }
 
     if (stored.isRevoked) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.TOKEN_REFRESH_FAILED,
+        stored.user.id,
+        req,
+        { reason: 'Token revoked' },
+      );
       throw new UnauthorizedException('Token revoked');
     }
 
     if (stored.expiresAt < new Date()) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.TOKEN_REFRESH_FAILED,
+        stored.user.id,
+        req,
+        { reason: 'Token expired' },
+      );
       throw new UnauthorizedException('Token expired');
     }
 
@@ -185,12 +228,18 @@ export class AuthService {
       useragentHeader,
     );
 
+    await this.authUtils.createActivityLog(
+      ActivityAction.TOKEN_REFRESH_SUCCESS,
+      stored.user.id,
+      req,
+      { reason: 'Token expired' },
+    );
+
     return tokens;
   }
 
   // ! ACTIVE SESSIONS
-  @ActivityLog(ActivityAction.SESSIONS_FOUND, ActivityAction.SESSIONS_NOT_FOUND)
-  async getActiveSessions(userId: string) {
+  async getActiveSessions(userId: string, req?: Request) {
     const sessions = await this.prisma.refreshToken.findMany({
       where: {
         userId,
@@ -209,14 +258,27 @@ export class AuthService {
     });
 
     if (!sessions || sessions.length === 0) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.SESSIONS_NOT_FOUND,
+        userId,
+        req,
+        { reason: 'Not found any session' },
+      );
       throw new NotFoundException('Not found any session');
     }
+
+    await this.authUtils.createActivityLog(
+      ActivityAction.SESSIONS_FOUND,
+      userId,
+      req,
+      { reason: 'found sessions' },
+    );
+
     return sessions;
   }
 
   // ! LOGOUT
-  // @ActivityLog(ActivityAction.LOGOUT, ActivityAction.LOGOUT_FAILED)
-  async logout(refreshToken: string) {
+  async logout(refreshToken: string, req?: Request) {
     const tokenRecord = await this.prisma.refreshToken.findFirst({
       where: { token: refreshToken },
       select: { id: true, userId: true, device: true, userAgent: true },
@@ -228,20 +290,29 @@ export class AuthService {
         data: { isRevoked: true },
       });
 
+      await this.authUtils.createActivityLog(
+        ActivityAction.LOGOUT,
+        tokenRecord.userId,
+        req,
+        { reason: 'Logged out successfully' },
+      );
+
       return {
         message: 'Logged out successfully',
       };
     } else {
+      await this.authUtils.createActivityLog(
+        ActivityAction.LOGOUT_FAILED,
+        undefined,
+        req,
+        { reason: 'Invalid logout request' },
+      );
       throw new UnauthorizedException('Invalid logout request');
     }
   }
 
   // ! LOGOUT FROM SPECIAL DEVICE
-  @ActivityLog(
-    ActivityAction.LOGOUT_FROM_DEVICE,
-    ActivityAction.LOGOUT_FROM_DEVICE_FAILED,
-  )
-  async logoutFromDevice(userId: string, deviceId: string) {
+  async logoutFromDevice(userId: string, deviceId: string, req?: Request) {
     const revoked = await this.prisma.refreshToken.update({
       where: {
         id: deviceId,
@@ -259,14 +330,27 @@ export class AuthService {
     });
 
     if (!revoked) {
+      await this.authUtils.createActivityLog(
+        ActivityAction.LOGOUT_FROM_DEVICE_FAILED,
+        userId,
+        req,
+        { reason: 'Device not found or not owned by user' },
+      );
+
       throw new UnauthorizedException('Device not found or not owned by user');
     }
+    await this.authUtils.createActivityLog(
+      ActivityAction.LOGOUT_FROM_DEVICE,
+      userId,
+      req,
+      { reason: 'Logged out from specific device' },
+    );
+
     return { message: 'Logged out from specific device' };
   }
 
   // ! LOGOUT FROM ALL DEVICE
-  @ActivityLog(ActivityAction.LOGOUT_ALL, ActivityAction.LOGOUT_ALL_FAILED)
-  async logoutAll(userId: string) {
+  async logoutAll(userId: string, req?: Request) {
     const results = await this.prisma.refreshToken.updateMany({
       where: {
         userId,
@@ -278,6 +362,13 @@ export class AuthService {
     });
 
     // ? Logout from all device
+    await this.authUtils.createActivityLog(
+      ActivityAction.LOGOUT_ALL,
+      userId,
+      req,
+      { reason: `Logged out from ${results.count} devices` },
+    );
+
     return {
       message: `Logged out from ${results.count} devices`,
     };
