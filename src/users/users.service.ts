@@ -9,7 +9,6 @@ import { QueryUsersDto } from './dto/query-users.dto';
 import { AuthUtilsService } from '@/lib/auth-utils/auth-utils.service';
 import { ActivityAction } from '@/common/enums/activity-action.enum';
 import { Request } from 'express';
-import { ActivityLog } from '@/common/decorators/activity-log.decorator';
 
 @Injectable()
 export class UsersService {
@@ -57,7 +56,6 @@ export class UsersService {
     };
   }
 
-  @ActivityLog(ActivityAction.GET_USER_SUCCESS, ActivityAction.GET_USER_FAILED)
   async getUserById(id: string, userId: string, req: Request) {
     const user = await this.prisma.user.findUnique({
       where: { id },

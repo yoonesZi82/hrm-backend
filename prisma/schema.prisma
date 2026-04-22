@@ -44,6 +44,12 @@ enum OrgRole {
   EMPLOYEE
 }
 
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+}
+
 // ? USER & AUTH
 
 model User {
@@ -181,10 +187,12 @@ model Organization {
   branches     Branch[]
   settings     OrganizationSettings?
   subscription Subscription?
+  departments  Department[]
+  positions    Position[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  Department Department[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  Employee  Employee[]
 
   @@map("organizations")
 }
@@ -285,4 +293,60 @@ model Department {
   @@unique([organizationId, name])
   @@index([organizationId])
   @@map("departments")
+}
+
+model Position {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String  @unique
+  description String?
+
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  employeePositions EmployeePosition[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("positions")
+}
+
+model Employee {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  email     String? @unique
+  phone     String? @unique
+
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  employeePositions EmployeePosition[]
+
+  status   EmployeeStatus @default(ACTIVE)
+  hireDate DateTime       @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("employees")
+}
+
+model EmployeePosition {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  employeeId String   @db.ObjectId
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  positionId String   @db.ObjectId
+  position   Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([employeeId, positionId])
+  @@index([employeeId])
+  @@index([positionId])
+  @@map("employee_positions")
 }

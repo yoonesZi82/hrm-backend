@@ -20,8 +20,6 @@ import { OrganizationMembersModule } from './organization-members/organization-m
 import { PermissionModule } from './permission/permission.module';
 import { InvitationModule } from './invitation/invitation.module';
 import { UsersModule } from './users/users.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
 
 @Module({
   imports: [
@@ -48,12 +46,6 @@ import { ActivityLogInterceptor } from './common/interceptors/activity-log.inter
     InvitationModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: ActivityLogInterceptor,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule {}
